@@ -71,29 +71,32 @@
     /* منطقة المقبض (السلايدر) */
     #sliderArea {
       position: absolute;
-      bottom: 10px;
+      /* Position the slider so it aligns with the player's box.
+         The player sits 80px above the bottom of the canvas and has a height of 50px,
+         so bottom is set to 30px (640 - ((640-80) + 50) = 30). */
+      bottom: 30px;
       left: 10px;
       right: 10px;
-      height: 40px;
-      border-radius: 20px;
-      background: #333;
-      border: 1px solid #555;
+      height: 50px;
+      border-radius: 8px;
+      background: transparent;
+      border: none;
       z-index: 3;
       touch-action: none;
     }
 
     #handle {
       position: absolute;
-      top: 3px;
+      top: 0;
       left: 50%;
       transform: translateX(-50%);
-      width: 60px;
-      height: 34px;
-      border-radius: 17px;
+      width: 50px;
+      height: 50px;
+      border-radius: 8px;
       background: #4caf50;
       box-shadow: 0 0 8px rgba(0,0,0,0.5);
       text-align: center;
-      line-height: 34px;
+      line-height: 50px;
       font-size: 12px;
       user-select: none;
     }
@@ -107,7 +110,8 @@
 
     <!-- منطقة المقبض -->
     <div id="sliderArea">
-      <div id="handle">تحريك</div>
+      <!-- handle element represents the player and acts as the draggable part -->
+      <div id="handle"></div>
     </div>
   </div>
 
@@ -142,6 +146,9 @@
 
     // لرسالة "شاطر يا محمد"
     let messageTimeout = null;
+
+    // نستخدم هذا المتغير لتتبع ما إذا تم إخفاء رسالة التعليمات حتى لا تبقى أثناء اللعب
+    let messageHidden = false;
 
     function showCongrats() {
       messageEl.textContent = `شاطر يا محمد! جمعت ${score} عملة 🎉`;
@@ -219,9 +226,7 @@
       ctx.fillStyle = '#111';
       ctx.fillRect(0, 0, W, H);
 
-      // اللاعب
-      ctx.fillStyle = '#4caf50';
-      ctx.fillRect(player.x, player.y, player.w, player.h);
+      // اللاعب يُرسم بواسطة المقبض في واجهة HTML، لذا لا نرسمه هنا.
 
       // العملات
       ctx.fillStyle = '#ffd700';
@@ -243,6 +248,12 @@
     window.addEventListener('keydown', (e) => {
       if (e.key === 'ArrowLeft') moveDir = -1;
       if (e.key === 'ArrowRight') moveDir = 1;
+
+      // إخفاء رسالة التعليمات عند استخدام لوحة المفاتيح لأول مرة
+      if (!messageHidden) {
+        messageEl.style.display = 'none';
+        messageHidden = true;
+      }
     });
 
     window.addEventListener('keyup', (e) => {
@@ -269,6 +280,12 @@
 
       // تحريك اللاعب على حسب النسبة
       player.x = ratio * (W - player.w);
+
+      // إخفاء رسالة التعليمات عند أول تفاعل مع المقبض
+      if (!messageHidden) {
+        messageEl.style.display = 'none';
+        messageHidden = true;
+      }
     }
 
     // لمس
