@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>لعبة جمع العملات</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- لون شريط العنوان في الموبايل -->
+  <meta name="theme-color" content="#111111">
+
+  <!-- ربط ملف الـ manifest -->
+  <link rel="manifest" href="manifest.json">
+
+  <!-- أيقونة عادية للمتصفح -->
+  <link rel="icon" href="icon-192.png">
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: #222;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: sans-serif;
+      color: #fff;
+    }
+
+    #gameContainer {
+      position: relative;
+      width: 360px;
+      height: 640px;
+      border: 2px solid #555;
+      background: #111;
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: #222;
+    }
+
+    #info {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      font-size: 14px;
+      z-index: 2;
+      text-shadow: 0 0 4px #000;
+    }
+
+    #message {
+      position: absolute;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 16px;
+      text-align: center;
+      text-shadow: 0 0 4px #000;
+      transition: opacity 0.3s ease;
+    }
+
+    /* منطقة المقبض (السلايدر) */
+    #sliderArea {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      right: 10px;
+      height: 40px;
+      border-radius: 20px;
+      background: #333;
+      border: 1px solid #555;
+      z-index: 3;
+      touch-action: none;
+    }
+
+    #handle {
+      position: absolute;
+      top: 3px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 60px;
+      height: 34px;
+      border-radius: 17px;
+      background: #4caf50;
+      box-shadow: 0 0 8px rgba(0,0,0,0.5);
+      text-align: center;
+      line-height: 34px;
+      font-size: 12px;
+      user-select: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="gameContainer">
+    <div id="info">النقاط: <span id="score">0</span></div>
+    <div id="message">حرّك المقبض الأخضر لتحريك اللاعب</div>
+    <canvas id="game" width="360" height="640"></canvas>
+
+    <!-- منطقة المقبض -->
+    <div id="sliderArea">
+      <div id="handle">تحريك</div>
+    </div>
+  </div>
+
+  <script>
+    // عناصر HTML
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const messageEl = document.getElementById('message');
+    const sliderArea = document.getElementById('sliderArea');
+    const handle = document.getElementById('handle');
+
+    const W = canvas.width;
+    const H = canvas.height;
+
+    // اللاعب
+    const player = {
+      w: 50,
+      h: 50,
+      x: W / 2 - 25,
+      y: H - 80,
+      speed: 5
+    };
+
+    // العملات
+    const coins = [];
+    let score = 0;
+    let frameCount = 0;
+
+    // للتحكم بالكيبورد (للتجربة على الكمبيوتر)
+    let moveDir = 0;
+
+    // لرسالة "شاطر يا محمد"
+    let messageTimeout = null;
+
+    function showCongrats() {
+      messageEl.textContent = `شاطر يا محمد! جمعت ${score} عملة 🎉`;
+      messageEl.style.opacity = '1';
+
+      if (messageTimeout) clearTimeout(messageTimeout);
+      messageTimeout = setTimeout(() => {
+        messageEl.style.opacity = '0';
+      }, 2000);
+    }
+
+    // إنشاء عملة جديدة
+    function spawnCoin() {
+      const size = 20;
+      const x = Math.random() * (W - size);
+      coins.push({
+        x: x,
+        y: -size,
+        r: size / 2,
+        speed: 3 + Math.random() * 2
+      });
+    }
+
+    // تحديث المنطق
+    function update() {
+      frameCount++;
+
+      // تحريك اللاعب بالكيبورد (اختياري)
+      if (moveDir !== 0) {
+        player.x += moveDir * player.speed;
+      }
+
+      // حدود الشاشة
+      if (player.x < 0) player.x = 0;
+      if (player.x + player.w > W) player.x = W - player.w;
+
+      // عملة جديدة كل ثانية تقريباً
+      if (frameCount % 60 === 0) {
+        spawnCoin();
+      }
+
+      // تحريك العملات + التصادم
+      for (let i = coins.length - 1; i >= 0; i--) {
+        const c = coins[i];
+        c.y += c.speed;
+
+        // تصادم مع اللاعب
+        if (
+          c.y + c.r > player.y &&
+          c.y - c.r < player.y + player.h &&
+          c.x + c.r > player.x &&
+          c.x - c.r < player.x + player.w
+        ) {
+          coins.splice(i, 1);
+          score++;
+          scoreEl.textContent = score;
+
+          // كل 100 كوين → رسالة تشجيع
+          if (score > 0 && score % 100 === 0) {
+            showCongrats();
+          }
+
+          continue;
+        }
+
+        // خروج من الشاشة
+        if (c.y - c.r > H) {
+          coins.splice(i, 1);
+        }
+      }
+    }
+
+    // الرسم
+    function draw() {
+      ctx.fillStyle = '#111';
+      ctx.fillRect(0, 0, W, H);
+
+      // اللاعب
+      ctx.fillStyle = '#4caf50';
+      ctx.fillRect(player.x, player.y, player.w, player.h);
+
+      // العملات
+      ctx.fillStyle = '#ffd700';
+      for (const c of coins) {
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // حلقة اللعبة
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    // تحكم بالكيبورد (اختياري للتجربة على الكمبيوتر)
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') moveDir = -1;
+      if (e.key === 'ArrowRight') moveDir = 1;
+    });
+
+    window.addEventListener('keyup', (e) => {
+      if ((e.key === 'ArrowLeft' && moveDir === -1) ||
+          (e.key === 'ArrowRight' && moveDir === 1)) {
+        moveDir = 0;
+      }
+    });
+
+    // ===== التحكم بالمقبض (سلايدر) =====
+    let isDragging = false;
+
+    function updateFromSlider(clientX) {
+      const rect = sliderArea.getBoundingClientRect();
+      // نسبة المكان داخل السلايدر بين 0 و 1
+      let ratio = (clientX - rect.left) / rect.width;
+      if (ratio < 0) ratio = 0;
+      if (ratio > 1) ratio = 1;
+
+      // تحريك المقبض
+      const handleWidth = handle.offsetWidth;
+      const handleX = ratio * (rect.width - handleWidth);
+      handle.style.left = handleX + 'px';
+
+      // تحريك اللاعب على حسب النسبة
+      player.x = ratio * (W - player.w);
+    }
+
+    // لمس
+    sliderArea.addEventListener('touchstart', (e) => {
+      isDragging = true;
+      const touch = e.touches[0];
+      if (!touch) return;
+      updateFromSlider(touch.clientX);
+      e.preventDefault();
+    }, { passive: false });
+
+    sliderArea.addEventListener('touchmove', (e) => {
+      if (!isDragging) return;
+      const touch = e.touches[0];
+      if (!touch) return;
+      updateFromSlider(touch.clientX);
+      e.preventDefault();
+    }, { passive: false });
+
+    sliderArea.addEventListener('touchend', () => {
+      isDragging = false;
+    });
+
+    sliderArea.addEventListener('touchcancel', () => {
+      isDragging = false;
+    });
+
+    // ماوس (للتجربة على الكمبيوتر)
+    sliderArea.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      updateFromSlider(e.clientX);
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      updateFromSlider(e.clientX);
+    });
+
+    window.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+
+    // تسجيل الـ Service Worker عشان PWA
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+          .catch(err => {
+            console.log('Service Worker registration failed:', err);
+          });
+      });
+    }
+
+    // بدء اللعبة
+    loop();
+  </script>
+</body>
+</html>
