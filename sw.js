@@ -1,4 +1,8 @@
-const CACHE_NAME = 'coin-game-cache-v1';
+// Bump the cache name to force the service worker to update its cached files
+// Whenever you make changes to cached assets (like index.html),
+// you should increment this version string. This ensures that
+// browsers will fetch the new version and discard the old cache.
+const CACHE_NAME = 'coin-game-cache-v2';
 const ASSETS = [
   '/',
   '/index.html',
